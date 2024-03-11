@@ -5,7 +5,7 @@ author: 'xCykrix'
 version: '${project.version}'
 
 main: com.github.xcykrix.dynamiclights.DynamicLights
-api-version: '1.18'
+api-version: '1.20'
 load: 'POSTWORLD'
 
 depend:

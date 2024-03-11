@@ -60,7 +60,7 @@ public class LightManager extends Stateful implements Shutdown {
                 boolean valid = this.valid(player, mainHand, offHand);
                 int lightLevel = 0;
                 if (valid) {
-                    lightLevel = lightSources.getLightLevel(offHand.getType(), mainHand.getType());
+                    lightLevel = lightSources.getLightLevel(mainHand, mainHand.getType());
                 }
 
                 // Deploy Lighting
@@ -135,8 +135,7 @@ public class LightManager extends Stateful implements Shutdown {
     public boolean valid(Player player, ItemStack mainHand, ItemStack offHand) {
         Material main = mainHand.getType();
         Material off = offHand.getType();
-        boolean hasLightLevel = lightSources.hasLightLevel(off);
-        if (!hasLightLevel) hasLightLevel = lightSources.hasLightLevel(main);
+        boolean hasLightLevel = lightSources.hasLightLevel(mainHand);
         if (!hasLightLevel) return false;
 
         Block currentLocation = player.getEyeLocation().getBlock();

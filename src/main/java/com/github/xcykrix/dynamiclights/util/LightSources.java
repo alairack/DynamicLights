@@ -3,7 +3,9 @@ package com.github.xcykrix.dynamiclights.util;
 import com.github.xcykrix.plugincommon.PluginCommon;
 import com.github.xcykrix.plugincommon.extendables.Stateful;
 import com.shaded._100.dev.dejvokep.boostedyaml.YamlDocument;
+import de.tr7zw.nbtapi.NBTItem;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,12 +56,24 @@ public class LightSources extends Stateful {
         this.pluginCommon.getLogger().info("Registered " + this.protectedLights.size() + " items for Dynamic Lockable Lights.");
     }
 
-    public boolean hasLightLevel(Material material) {
-        return levelOfLights.containsKey(material);
+    public boolean hasLightLevel(ItemStack item) {
+        if (item.getType().equals(Material.AIR) || item.getAmount() == 0){
+            return false;
+        }
+        NBTItem nbti = new NBTItem(item);
+        return nbti.hasTag("lightLevel") ||  levelOfLights.containsKey(item.getType());
     }
 
-    public Integer getLightLevel(Material material, Material fallback) {
-        return levelOfLights.getOrDefault(material, levelOfLights.getOrDefault(fallback, 0));
+    public Integer getLightLevel(ItemStack itemStack, Material fallback) {
+        Integer lightLevel = 1;
+        NBTItem nbti = new NBTItem(itemStack);
+        if (nbti.hasTag("lightLevel")) {
+            lightLevel = nbti.getInteger("lightLevel");
+        }
+        else {
+            lightLevel = levelOfLights.getOrDefault(itemStack.getType(), levelOfLights.getOrDefault(fallback, 0));
+        }
+        return lightLevel;
     }
 
     public boolean isSubmersible(Material offHand, Material mainHand) {

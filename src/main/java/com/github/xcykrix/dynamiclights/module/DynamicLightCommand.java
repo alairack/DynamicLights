@@ -9,8 +9,11 @@ import com.github.xcykrix.plugincommon.extendables.implement.Initialize;
 import com.shaded._100.aikar.commands.BaseCommand;
 import com.shaded._100.aikar.commands.CommandHelp;
 import com.shaded._100.aikar.commands.annotation.*;
+import de.tr7zw.nbtapi.NBT;
+import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 @CommandAlias("dynamiclights|dynamiclight|dl")
 public class DynamicLightCommand extends BaseCommand implements Initialize {
@@ -44,6 +47,22 @@ public class DynamicLightCommand extends BaseCommand implements Initialize {
                 this.languageFile.getComponentFromID("disable-lock", true)
             );
             this.lightManager.lightLockStatus.put(player.getUniqueId().toString(), false);
+        }
+    }
+
+    @Subcommand("light")
+    @CommandPermission("dynamiclights.lock")
+    public void setItemLight(Player player , @Flags("光照等级") Integer lightLevel, @Flags("可照明分钟") Integer lightTime) {
+        if (!(player.getInventory().getItemInMainHand().getType().equals(Material.AIR)))
+        {
+            ItemStack item = player.getInventory().getItemInMainHand();
+            NBT.modify(item, nbt -> {
+                nbt.setInteger("lightLevel", lightLevel);
+                nbt.setInteger("lightTime", lightTime);
+            });
+        }
+        else {
+            player.sendMessage("您必须手持物品以设置光照等级和耐久度!");
         }
     }
 
