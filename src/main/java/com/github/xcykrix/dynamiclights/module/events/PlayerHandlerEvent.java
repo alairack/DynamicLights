@@ -28,15 +28,15 @@ public class PlayerHandlerEvent extends Stateful implements Listener {
         this.defaultState = this.pluginCommon.configurationAPI.get("config.yml").getOptionalBoolean("default-lock-state").orElse(false);
     }
 
-//    @EventHandler
+//    @EventHandler(priority = EventPriority.HIGHEST)
 //    public void playerItemHeldEvent(PlayerItemHeldEvent event) {
-//        ItemStack itemStack = event.getPlayer().getInventory().getItemInMainHand();
-//        if (!(itemStack.getType().equals(Material.AIR))){
-//            NBTItem nbti = new NBTItem(itemStack);
-//            if (nbti.hasTag("lightLevel")){
-//                lightManager.addPlayer(event.getPlayer());
-//            }
-//        }
+////        ItemStack itemStack = event.getPlayer().getInventory().getItemInMainHand();
+////        if (!(itemStack.getType().equals(Material.AIR))){
+////            NBTItem nbti = new NBTItem(itemStack);
+////            if (nbti.hasTag("lightLevel")){
+////                lightManager.addPlayer(event.getPlayer());
+////            }
+////        }
 //    }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)

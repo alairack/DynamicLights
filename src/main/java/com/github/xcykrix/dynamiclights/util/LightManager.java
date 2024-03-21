@@ -4,6 +4,8 @@ import com.github.xcykrix.plugincommon.PluginCommon;
 import com.github.xcykrix.plugincommon.extendables.Stateful;
 import com.github.xcykrix.plugincommon.extendables.implement.Shutdown;
 import com.shaded._100.org.h2.mvstore.MVMap;
+import de.tr7zw.nbtapi.NBT;
+import de.tr7zw.nbtapi.NBTItem;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -29,6 +31,8 @@ public class LightManager extends Stateful implements Shutdown {
     // Configuration
     private long refresh = 5L;
     private int distance = 64;
+
+    private double consumption = 0.25;
 
     public LightManager(PluginCommon pluginCommon, LightSources lightSources) {
         super(pluginCommon);
@@ -56,12 +60,20 @@ public class LightManager extends Stateful implements Shutdown {
                 ItemStack mainHand = player.getInventory().getItemInMainHand();
                 ItemStack offHand = player.getInventory().getItemInOffHand();
 
+
                 // Check Light Source Validity
                 boolean valid = this.valid(player, mainHand, offHand);
                 int lightLevel = 0;
                 if (valid) {
                     lightLevel = lightSources.getLightLevel(mainHand, mainHand.getType());
                 }
+                if (mainHand.getType() != Material.AIR && mainHand.getAmount() != 0){
+                    if (!consume(mainHand, player)){
+                        mainHand.setAmount(mainHand.getAmount() - 1);
+                        return;
+                    }
+                }
+
 
                 // Deploy Lighting
                 for (Player targetPlayer : Bukkit.getOnlinePlayers()) {
@@ -98,6 +110,27 @@ public class LightManager extends Stateful implements Shutdown {
                 }
             }, 50L, refresh));
         }
+    }
+
+
+    public boolean consume(ItemStack mainhand, Player player){
+        // 计算剩余的耐久度
+        NBTItem nbti = new NBTItem(mainhand);
+        if (nbti.hasTag("lightTime")) {
+            Double lightTime = nbti.getDouble("lightTime");
+            lightTime = lightTime - this.consumption;
+            if (lightTime <= 0){
+                return false;
+            }
+            else {
+                Double finalLightTime = lightTime;
+                NBT.modify(mainhand, nbt -> {
+                    nbt.setDouble("lightTime", finalLightTime);
+                });
+
+            }
+        }
+        return true;
     }
 
     public void removePlayer(UUID uid) {

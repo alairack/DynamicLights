@@ -52,14 +52,18 @@ public class DynamicLightCommand extends BaseCommand implements Initialize {
 
     @Subcommand("light")
     @CommandPermission("dynamiclights.lock")
-    public void setItemLight(Player player , @Flags("光照等级") Integer lightLevel, @Flags("可照明分钟") Integer lightTime) {
+    public void setItemLight(Player player , @Flags("光照等级") Integer lightLevel, @Flags("可照明分钟") Double lightTime) {
+        if (lightLevel > 15){
+            player.sendMessage("光照等级最大为15");
+        }
         if (!(player.getInventory().getItemInMainHand().getType().equals(Material.AIR)))
         {
             ItemStack item = player.getInventory().getItemInMainHand();
             NBT.modify(item, nbt -> {
                 nbt.setInteger("lightLevel", lightLevel);
-                nbt.setInteger("lightTime", lightTime);
+                nbt.setDouble("lightTime", lightTime);
             });
+            player.sendMessage(String.format("设置成功：物品光照等级%s ,可照明%s秒 !", lightLevel, lightTime));
         }
         else {
             player.sendMessage("您必须手持物品以设置光照等级和耐久度!");
