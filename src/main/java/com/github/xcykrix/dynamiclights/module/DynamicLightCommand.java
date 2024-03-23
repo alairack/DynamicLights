@@ -62,8 +62,9 @@ public class DynamicLightCommand extends BaseCommand implements Initialize {
             NBT.modify(item, nbt -> {
                 nbt.setInteger("lightLevel", lightLevel);
                 nbt.setDouble("lightTime", lightTime);
+                nbt.setDouble("originLightTime", lightTime);
             });
-            player.sendMessage(String.format("设置成功：物品光照等级%s ,可照明%s秒 !", lightLevel, lightTime));
+            player.sendMessage(String.format("设置成功：物品光照等级%s ,可照明%s分钟 !", lightLevel, lightTime));
         }
         else {
             player.sendMessage("您必须手持物品以设置光照等级和耐久度!");

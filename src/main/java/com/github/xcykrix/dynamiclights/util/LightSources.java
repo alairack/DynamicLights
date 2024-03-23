@@ -65,15 +65,18 @@ public class LightSources extends Stateful {
     }
 
     public Integer getLightLevel(ItemStack itemStack, Material fallback) {
-        Integer lightLevel = 1;
-        NBTItem nbti = new NBTItem(itemStack);
-        if (nbti.hasTag("lightLevel")) {
-            lightLevel = nbti.getInteger("lightLevel");
+        if (itemStack != null || itemStack.getAmount() != 0){
+            Integer lightLevel = 1;
+            NBTItem nbti = new NBTItem(itemStack);
+            if (nbti.hasTag("lightLevel")) {
+                lightLevel = nbti.getInteger("lightLevel");
+            }
+            else {
+                lightLevel = levelOfLights.getOrDefault(itemStack.getType(), levelOfLights.getOrDefault(fallback, 0));
+            }
+            return lightLevel;
         }
-        else {
-            lightLevel = levelOfLights.getOrDefault(itemStack.getType(), levelOfLights.getOrDefault(fallback, 0));
-        }
-        return lightLevel;
+        return 0;
     }
 
     public boolean isSubmersible(Material offHand, Material mainHand) {

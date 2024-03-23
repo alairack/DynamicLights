@@ -24,15 +24,17 @@ public class LightManager extends Stateful implements Shutdown {
     public final LightSources lightSources;
     private final HashMap<String, Location> lastLightLocation = new HashMap<>();
     private final HashMap<UUID, BukkitTask> tasks = new HashMap<>();
+    private final HashMap<UUID, BukkitTask> consumeTasks = new HashMap<>();
 
     // Local Database Map
     public final MVMap<String, Boolean> lightLockStatus;
 
     // Configuration
     private long refresh = 5L;
+    private final long consumeRefresh = 1200L; //每分钟刷新一次
     private int distance = 64;
 
-    private double consumption = 0.25;
+    private double consumption = 1;
 
     public LightManager(PluginCommon pluginCommon, LightSources lightSources) {
         super(pluginCommon);
@@ -62,53 +64,64 @@ public class LightManager extends Stateful implements Shutdown {
 
 
                 // Check Light Source Validity
-                boolean valid = this.valid(player, mainHand, offHand);
-                int lightLevel = 0;
-                if (valid) {
-                    lightLevel = lightSources.getLightLevel(mainHand, mainHand.getType());
-                }
-                if (mainHand.getType() != Material.AIR && mainHand.getAmount() != 0){
-                    if (!consume(mainHand, player)){
-                        mainHand.setAmount(mainHand.getAmount() - 1);
-                        return;
+                try{
+                    boolean valid = this.valid(player, mainHand, offHand);
+                    int lightLevel = 0;
+                    if (valid) {
+                        lightLevel = lightSources.getLightLevel(mainHand, mainHand.getType());
                     }
-                }
+                    // Deploy Lighting
+                    for (Player targetPlayer : Bukkit.getOnlinePlayers()) {
+                        // Pull Last Location
+                        String locationId = player.getUniqueId() + "/" + targetPlayer.getUniqueId();
+                        Location lastLocation = this.getLastLocation(locationId);
 
-
-                // Deploy Lighting
-                for (Player targetPlayer : Bukkit.getOnlinePlayers()) {
-                    // Pull Last Location
-                    String locationId = player.getUniqueId() + "/" + targetPlayer.getUniqueId();
-                    Location lastLocation = this.getLastLocation(locationId);
-
-                    // Test and Remove Old Lights
-                    if (!valid) {
-                        if (lastLocation != null) {
-                            this.removeLight(targetPlayer, lastLocation);
-                            this.removeLastLocation(locationId);
+                        // Test and Remove Old Lights
+                        if (!valid) {
+                            if (lastLocation != null) {
+                                this.removeLight(targetPlayer, lastLocation);
+                                this.removeLastLocation(locationId);
+                            }
+                            continue;
                         }
-                        continue;
-                    }
 
-                    // Get the Next Location
-                    Location nextLocation = player.getEyeLocation();
+                        // Get the Next Location
+                        Location nextLocation = player.getEyeLocation();
 
-                    // Add Light Sources
-                    if (lightLevel > 0 && differentLocations(lastLocation, nextLocation)) {
-                        if (player.getWorld().getName().equals(targetPlayer.getWorld().getName())) {
-                            if (player.getLocation().distance(targetPlayer.getLocation()) <= this.distance) {
-                                this.addLight(targetPlayer, nextLocation, lightLevel);
-                                this.setLastLocation(locationId, nextLocation);
+                        // Add Light Sources
+                        if (lightLevel > 0 && differentLocations(lastLocation, nextLocation)) {
+                            if (player.getWorld().getName().equals(targetPlayer.getWorld().getName())) {
+                                if (player.getLocation().distance(targetPlayer.getLocation()) <= this.distance) {
+                                    this.addLight(targetPlayer, nextLocation, lightLevel);
+                                    this.setLastLocation(locationId, nextLocation);
+                                }
                             }
                         }
-                    }
 
-                    // Remove Last Locations
-                    if (lastLocation != null && differentLocations(lastLocation, nextLocation)) {
-                        this.removeLight(targetPlayer, lastLocation);
+                        // Remove Last Locations
+                        if (lastLocation != null && differentLocations(lastLocation, nextLocation)) {
+                            this.removeLight(targetPlayer, lastLocation);
+                        }
                     }
-                }
-            }, 50L, refresh));
+                } catch (NullPointerException ignored){}
+
+
+
+
+            }, 2L, refresh));
+        }
+        synchronized (this.consumeTasks) {
+            if (this.consumeTasks.containsKey(player.getUniqueId())) return;
+            this.consumeTasks.put(player.getUniqueId(), this.pluginCommon.getServer().getScheduler().runTaskTimerAsynchronously(this.pluginCommon, () -> {
+                ItemStack mainHand = player.getInventory().getItemInMainHand();
+                try {
+                    if (mainHand.getType() != Material.AIR && mainHand.getAmount() != 0){
+                        if (!consume(mainHand, player)){
+                            mainHand.setAmount(mainHand.getAmount() - 1);
+                        }
+                    }
+                } catch (NullPointerException ignored){}
+            }, 2L, consumeRefresh));
         }
     }
 
@@ -120,6 +133,10 @@ public class LightManager extends Stateful implements Shutdown {
             Double lightTime = nbti.getDouble("lightTime");
             lightTime = lightTime - this.consumption;
             if (lightTime <= 0){
+                Double originLightTime = nbti.getDouble("originLightTime");
+                NBT.modify(mainhand, nbt -> {
+                    nbt.setDouble("lightTime", originLightTime);
+                });
                 return false;
             }
             else {
@@ -127,7 +144,6 @@ public class LightManager extends Stateful implements Shutdown {
                 NBT.modify(mainhand, nbt -> {
                     nbt.setDouble("lightTime", finalLightTime);
                 });
-
             }
         }
         return true;
@@ -166,18 +182,21 @@ public class LightManager extends Stateful implements Shutdown {
     }
 
     public boolean valid(Player player, ItemStack mainHand, ItemStack offHand) {
-        Material main = mainHand.getType();
-        Material off = offHand.getType();
-        boolean hasLightLevel = lightSources.hasLightLevel(mainHand);
-        if (!hasLightLevel) return false;
+        if (mainHand != null || mainHand.getAmount() != 0)
+        {
+            Material main = mainHand.getType();
+            Material off = offHand.getType();
+            boolean hasLightLevel = lightSources.hasLightLevel(mainHand);
+            if (!hasLightLevel) return false;
 
-        Block currentLocation = player.getEyeLocation().getBlock();
-        if (currentLocation.getType() == Material.AIR || currentLocation.getType() == Material.CAVE_AIR) return true;
-        if (currentLocation instanceof Waterlogged && ((Waterlogged) currentLocation).isWaterlogged()) {
-            return false;
-        }
-        if (currentLocation.getType() == Material.WATER) {
-            return lightSources.isSubmersible(off, main);
+            Block currentLocation = player.getEyeLocation().getBlock();
+            if (currentLocation.getType() == Material.AIR || currentLocation.getType() == Material.CAVE_AIR) return true;
+            if (currentLocation instanceof Waterlogged && ((Waterlogged) currentLocation).isWaterlogged()) {
+                return false;
+            }
+            if (currentLocation.getType() == Material.WATER) {
+                return lightSources.isSubmersible(off, main);
+            }
         }
         return false;
     }
