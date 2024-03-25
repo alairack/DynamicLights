@@ -17,7 +17,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 
 public class LightManager extends Stateful implements Shutdown {
@@ -25,6 +27,8 @@ public class LightManager extends Stateful implements Shutdown {
     private final HashMap<String, Location> lastLightLocation = new HashMap<>();
     private final HashMap<UUID, BukkitTask> tasks = new HashMap<>();
     private final HashMap<UUID, BukkitTask> consumeTasks = new HashMap<>();
+
+    private final List<ItemStack> usedItemStacks = new ArrayList<>();
 
     // Local Database Map
     public final MVMap<String, Boolean> lightLockStatus;
@@ -64,63 +68,66 @@ public class LightManager extends Stateful implements Shutdown {
 
 
                 // Check Light Source Validity
-                try{
-                    boolean valid = this.valid(player, mainHand, offHand);
-                    int lightLevel = 0;
-                    if (valid) {
-                        lightLevel = lightSources.getLightLevel(mainHand, mainHand.getType());
+
+                boolean valid = this.valid(player, mainHand, offHand);
+                int lightLevel = 0;
+                if (valid) {
+                    lightLevel = lightSources.getLightLevel(mainHand, mainHand.getType());
+                    if (!this.usedItemStacks.contains(mainHand)){
+                        this.usedItemStacks.add(mainHand);
                     }
-                    // Deploy Lighting
-                    for (Player targetPlayer : Bukkit.getOnlinePlayers()) {
-                        // Pull Last Location
-                        String locationId = player.getUniqueId() + "/" + targetPlayer.getUniqueId();
-                        Location lastLocation = this.getLastLocation(locationId);
+                }
+                // Deploy Lighting
+                for (Player targetPlayer : Bukkit.getOnlinePlayers()) {
+                    // Pull Last Location
+                    String locationId = player.getUniqueId() + "/" + targetPlayer.getUniqueId();
+                    Location lastLocation = this.getLastLocation(locationId);
 
-                        // Test and Remove Old Lights
-                        if (!valid) {
-                            if (lastLocation != null) {
-                                this.removeLight(targetPlayer, lastLocation);
-                                this.removeLastLocation(locationId);
-                            }
-                            continue;
-                        }
-
-                        // Get the Next Location
-                        Location nextLocation = player.getEyeLocation();
-
-                        // Add Light Sources
-                        if (lightLevel > 0 && differentLocations(lastLocation, nextLocation)) {
-                            if (player.getWorld().getName().equals(targetPlayer.getWorld().getName())) {
-                                if (player.getLocation().distance(targetPlayer.getLocation()) <= this.distance) {
-                                    this.addLight(targetPlayer, nextLocation, lightLevel);
-                                    this.setLastLocation(locationId, nextLocation);
-                                }
-                            }
-                        }
-
-                        // Remove Last Locations
-                        if (lastLocation != null && differentLocations(lastLocation, nextLocation)) {
+                    // Test and Remove Old Lights
+                    if (!valid) {
+                        if (lastLocation != null) {
                             this.removeLight(targetPlayer, lastLocation);
+                            this.removeLastLocation(locationId);
+                        }
+                        continue;
+                    }
+
+                    // Get the Next Location
+                    Location nextLocation = player.getEyeLocation();
+
+                    // Add Light Sources
+                    if (lightLevel > 0 && differentLocations(lastLocation, nextLocation)) {
+                        if (player.getWorld().getName().equals(targetPlayer.getWorld().getName())) {
+                            if (player.getLocation().distance(targetPlayer.getLocation()) <= this.distance) {
+                                this.addLight(targetPlayer, nextLocation, lightLevel);
+                                this.setLastLocation(locationId, nextLocation);
+                            }
                         }
                     }
-                } catch (NullPointerException ignored){}
 
-
-
+                    // Remove Last Locations
+                    if (lastLocation != null && differentLocations(lastLocation, nextLocation)) {
+                        this.removeLight(targetPlayer, lastLocation);
+                    }
+                }
 
             }, 2L, refresh));
         }
         synchronized (this.consumeTasks) {
             if (this.consumeTasks.containsKey(player.getUniqueId())) return;
             this.consumeTasks.put(player.getUniqueId(), this.pluginCommon.getServer().getScheduler().runTaskTimerAsynchronously(this.pluginCommon, () -> {
-                ItemStack mainHand = player.getInventory().getItemInMainHand();
-                try {
-                    if (mainHand.getType() != Material.AIR && mainHand.getAmount() != 0){
-                        if (!consume(mainHand, player)){
-                            mainHand.setAmount(mainHand.getAmount() - 1);
+                for (int i =0; i< this.usedItemStacks.size(); i++){
+                    ItemStack usedItem = this.usedItemStacks.get(i);
+                    try {
+                        if (usedItem.getType() != Material.AIR && usedItem.getAmount() != 0){
+                            if (!consume(usedItem, player)){
+                                usedItem.setAmount(usedItem.getAmount() - 1);
+                                this.usedItemStacks.remove(usedItem);
+                                i--;
+                            }
                         }
-                    }
-                } catch (NullPointerException ignored){}
+                    } catch (NullPointerException ignored){}
+                }
             }, 2L, consumeRefresh));
         }
     }
