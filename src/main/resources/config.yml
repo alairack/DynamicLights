@@ -10,3 +10,7 @@ default-lock-state: true
 # DO NOT EDIT THE VERSION. Manual edits may corrupt or reset configuration files.
 #
 version: 2
+
+torch_durability: 2
+
+soul_torch_durability: 2

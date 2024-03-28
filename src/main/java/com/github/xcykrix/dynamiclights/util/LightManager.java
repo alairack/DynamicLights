@@ -40,6 +40,10 @@ public class LightManager extends Stateful implements Shutdown {
 
     private double consumption = 1;
 
+    private double torchDurability = this.pluginCommon.configurationAPI.get("config.yml").getInt("torch_durability");
+
+    private double soulTorchDurability = this.pluginCommon.configurationAPI.get("config.yml").getInt("soul_torch_durability");
+
     public LightManager(PluginCommon pluginCommon, LightSources lightSources) {
         super(pluginCommon);
         this.lightLockStatus = this.pluginCommon.h2MVStoreAPI.getStore().openMap("lightLockStatus");
@@ -65,6 +69,24 @@ public class LightManager extends Stateful implements Shutdown {
             this.tasks.put(player.getUniqueId(), this.pluginCommon.getServer().getScheduler().runTaskTimerAsynchronously(this.pluginCommon, () -> {
                 ItemStack mainHand = player.getInventory().getItemInMainHand();
                 ItemStack offHand = player.getInventory().getItemInOffHand();
+
+                NBTItem nbti = new NBTItem(mainHand);
+                if (!nbti.hasTag("lightTime")){
+                    if (mainHand.getType().equals(Material.TORCH)) {
+                        NBT.modify(mainHand, nbt -> {
+                            nbt.setInteger("lightLevel", 11);
+                            nbt.setDouble("lightTime", torchDurability);
+                            nbt.setDouble("originLightTime", torchDurability);
+                        });
+                    }
+                    if (mainHand.getType().equals(Material.SOUL_TORCH)){
+                        NBT.modify(mainHand, nbt -> {
+                            nbt.setInteger("lightLevel", 11);
+                            nbt.setDouble("lightTime", soulTorchDurability);
+                            nbt.setDouble("originLightTime", soulTorchDurability);
+                        });
+                    }
+                }
 
 
                 // Check Light Source Validity

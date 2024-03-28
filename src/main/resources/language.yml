@@ -17,8 +17,8 @@ chat-prefix: "<dark_gray>[</dark_gray><gold>DynamicLights</gold><dark_gray>]</da
 # Language Index
 language:
     prevent-block-place: "<prefix> <gray>Light locking mode is currently enabled. You must sneak to place light sources from your Off Hand. This can be toggled with \"/dl lock\".</gray>"
-    enable-lock: "<prefix> <gray>Enabled light lock mode.</gray>"
-    disable-lock: "<prefix> <gray>Disabled light lock mode.</gray>"
+    enable-lock: "<prefix> <gray>已打开移动光源</gray>"
+    disable-lock: "<prefix> <gray>已关闭移动光源</gray>"
 
 # DO NOT EDIT THE VERSION. Manual edits may corrupt or reset configuration files.
 #
