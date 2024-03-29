@@ -3,13 +3,11 @@ package com.github.xcykrix.dynamiclights.util;
 import com.github.xcykrix.plugincommon.PluginCommon;
 import com.github.xcykrix.plugincommon.extendables.Stateful;
 import com.github.xcykrix.plugincommon.extendables.implement.Shutdown;
+import com.google.common.base.Strings;
 import com.shaded._100.org.h2.mvstore.MVMap;
 import de.tr7zw.nbtapi.NBT;
 import de.tr7zw.nbtapi.NBTItem;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Waterlogged;
 import org.bukkit.block.data.type.Light;
@@ -161,8 +159,9 @@ public class LightManager extends Stateful implements Shutdown {
         if (nbti.hasTag("lightTime")) {
             Double lightTime = nbti.getDouble("lightTime");
             lightTime = lightTime - this.consumption;
+            Double originLightTime = nbti.getDouble("originLightTime");
             if (lightTime <= 0){
-                Double originLightTime = nbti.getDouble("originLightTime");
+
                 NBT.modify(mainhand, nbt -> {
                     nbt.setDouble("lightTime", originLightTime);
                 });
@@ -173,6 +172,7 @@ public class LightManager extends Stateful implements Shutdown {
                 NBT.modify(mainhand, nbt -> {
                     nbt.setDouble("lightTime", finalLightTime);
                 });
+                player.sendMessage("§e§l火把消耗: §8[§r" + this.getProgressBar(finalLightTime.intValue(), originLightTime.intValue(), originLightTime.intValue(), '|', ChatColor.YELLOW, ChatColor.YELLOW) + "§8]");
             }
         }
         return true;
@@ -247,5 +247,14 @@ public class LightManager extends Stateful implements Shutdown {
         if (l1.getWorld() == null || l2.getWorld() == null) return true;
         if (!l1.getWorld().getName().equals(l2.getWorld().getName())) return true;
         return l1.getBlockX() != l2.getBlockX() || l1.getBlockY() != l2.getBlockY() || l1.getBlockZ() != l2.getBlockZ();
+    }
+
+    public String getProgressBar(int current, int max, int totalBars, char symbol, ChatColor CompletedColor,
+                                 ChatColor notCompletedColor) {
+        float percent = (float) current / max;
+        int ProgressBars = (int) (totalBars * percent);
+
+        return Strings.repeat("" + CompletedColor + symbol, ProgressBars)
+            + Strings.repeat("" + notCompletedColor + symbol, totalBars - ProgressBars);
     }
 }
