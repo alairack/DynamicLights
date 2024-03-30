@@ -67,14 +67,19 @@ public class LightSources extends Stateful {
     public Integer getLightLevel(ItemStack itemStack, Material fallback) {
         if (itemStack != null || itemStack.getAmount() != 0){
             Integer lightLevel = 1;
-            NBTItem nbti = new NBTItem(itemStack);
-            if (nbti.hasTag("lightLevel")) {
-                lightLevel = nbti.getInteger("lightLevel");
+            try {
+                NBTItem nbti = new NBTItem(itemStack);
+                if (nbti.hasTag("lightLevel")) {
+                    lightLevel = nbti.getInteger("lightLevel");
+                }
+                else {
+                    lightLevel = levelOfLights.getOrDefault(itemStack.getType(), levelOfLights.getOrDefault(fallback, 0));
+                }
+                return lightLevel;
             }
-            else {
-                lightLevel = levelOfLights.getOrDefault(itemStack.getType(), levelOfLights.getOrDefault(fallback, 0));
+            catch (NullPointerException ignore){
             }
-            return lightLevel;
+
         }
         return 0;
     }

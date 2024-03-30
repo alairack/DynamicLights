@@ -14,6 +14,10 @@ import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
+import java.util.Arrays;
+import java.util.List;
 
 @CommandAlias("dynamiclights|dynamiclight|dl")
 public class DynamicLightCommand extends BaseCommand implements Initialize {
@@ -64,6 +68,18 @@ public class DynamicLightCommand extends BaseCommand implements Initialize {
                 nbt.setDouble("lightTime", lightTime);
                 nbt.setDouble("originLightTime", lightTime);
             });
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                if (meta.getLore() == null){
+                    meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", lightTime)));
+                }
+                else {
+                    List<String> lore = meta.getLore();
+                    lore.set(0, String.format("剩余照明时间 大概%s分钟", lightTime));
+                    meta.setLore(lore);
+                }
+                item.setItemMeta(meta);
+            }
             player.sendMessage(String.format("设置成功：物品光照等级%s ,可照明%s分钟 !", lightLevel, lightTime));
         }
         else {

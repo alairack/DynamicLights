@@ -13,12 +13,10 @@ import org.bukkit.block.data.Waterlogged;
 import org.bukkit.block.data.type.Light;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class LightManager extends Stateful implements Shutdown {
     public final LightSources lightSources;
@@ -68,23 +66,51 @@ public class LightManager extends Stateful implements Shutdown {
                 ItemStack mainHand = player.getInventory().getItemInMainHand();
                 ItemStack offHand = player.getInventory().getItemInOffHand();
 
-                NBTItem nbti = new NBTItem(mainHand);
-                if (!nbti.hasTag("lightTime")){
-                    if (mainHand.getType().equals(Material.TORCH)) {
-                        NBT.modify(mainHand, nbt -> {
-                            nbt.setInteger("lightLevel", 11);
-                            nbt.setDouble("lightTime", torchDurability);
-                            nbt.setDouble("originLightTime", torchDurability);
-                        });
-                    }
-                    if (mainHand.getType().equals(Material.SOUL_TORCH)){
-                        NBT.modify(mainHand, nbt -> {
-                            nbt.setInteger("lightLevel", 11);
-                            nbt.setDouble("lightTime", soulTorchDurability);
-                            nbt.setDouble("originLightTime", soulTorchDurability);
-                        });
+
+                if (mainHand.getAmount() != 0){
+                    NBTItem nbti = new NBTItem(mainHand);
+                    if (!nbti.hasTag("lightTime")){
+                        if (mainHand.getType().equals(Material.TORCH)) {
+                            NBT.modify(mainHand, nbt -> {
+                                nbt.setInteger("lightLevel", 11);
+                                nbt.setDouble("lightTime", torchDurability);
+                                nbt.setDouble("originLightTime", torchDurability);
+                            });
+                            ItemMeta meta = mainHand.getItemMeta();
+                            if (meta != null) {
+                                if (meta.getLore() == null){
+                                    meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", torchDurability)));
+                                }
+                                else {
+                                    List<String> lore = meta.getLore();
+                                    lore.set(0, String.format("剩余照明时间 大概%s分钟", torchDurability));
+                                    meta.setLore(lore);
+                                }
+                                mainHand.setItemMeta(meta);
+                            }
+                        }
+                        if (mainHand.getType().equals(Material.SOUL_TORCH)){
+                            NBT.modify(mainHand, nbt -> {
+                                nbt.setInteger("lightLevel", 11);
+                                nbt.setDouble("lightTime", soulTorchDurability);
+                                nbt.setDouble("originLightTime", soulTorchDurability);
+                            });
+                            ItemMeta meta = mainHand.getItemMeta();
+                            if (meta != null) {
+                                if (meta.getLore() == null){
+                                    meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", soulTorchDurability)));
+                                }
+                                else {
+                                    List<String> lore = meta.getLore();
+                                    lore.set(0, String.format("剩余照明时间 大概%s分钟", soulTorchDurability));
+                                    meta.setLore(lore);
+                                }
+                                mainHand.setItemMeta(meta);
+                            }
+                        }
                     }
                 }
+
 
 
                 // Check Light Source Validity
@@ -165,6 +191,18 @@ public class LightManager extends Stateful implements Shutdown {
                 NBT.modify(mainhand, nbt -> {
                     nbt.setDouble("lightTime", originLightTime);
                 });
+                ItemMeta meta = mainhand.getItemMeta();
+                if (meta != null) {
+                    if (meta.getLore() == null){
+                        meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", originLightTime)));
+                    }
+                    else {
+                        List<String> lore = meta.getLore();
+                        lore.set(0, String.format("剩余照明时间 大概%s分钟", originLightTime));
+                        meta.setLore(lore);
+                    }
+                    mainhand.setItemMeta(meta);
+                }
                 return false;
             }
             else {
@@ -172,7 +210,19 @@ public class LightManager extends Stateful implements Shutdown {
                 NBT.modify(mainhand, nbt -> {
                     nbt.setDouble("lightTime", finalLightTime);
                 });
-                player.sendMessage("§e§l火把消耗: §8[§r" + this.getProgressBar(finalLightTime.intValue(), originLightTime.intValue(), originLightTime.intValue(), '|', ChatColor.YELLOW, ChatColor.YELLOW) + "§8]");
+                ItemMeta meta = mainhand.getItemMeta();
+                if (meta != null) {
+                    if (meta.getLore() == null){
+                        meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", lightTime)));
+                    }
+                    else {
+                        List<String> lore = meta.getLore();
+                        lore.set(0, String.format("剩余照明时间 大概%s分钟", lightTime));
+                        meta.setLore(lore);
+                    }
+                    mainhand.setItemMeta(meta);
+                }
+
             }
         }
         return true;
