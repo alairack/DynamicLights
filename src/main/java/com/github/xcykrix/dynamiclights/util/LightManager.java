@@ -111,16 +111,67 @@ public class LightManager extends Stateful implements Shutdown {
                     }
                 }
 
+                if (offHand.getAmount() != 0){
+                    NBTItem nbti = new NBTItem(offHand);
+                    if (!nbti.hasTag("lightTime")){
+                        if (offHand.getType().equals(Material.TORCH)) {
+                            NBT.modify(offHand, nbt -> {
+                                nbt.setInteger("lightLevel", 11);
+                                nbt.setDouble("lightTime", torchDurability);
+                                nbt.setDouble("originLightTime", torchDurability);
+                            });
+                            ItemMeta meta = offHand.getItemMeta();
+                            if (meta != null) {
+                                if (meta.getLore() == null){
+                                    meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", torchDurability)));
+                                }
+                                else {
+                                    List<String> lore = meta.getLore();
+                                    lore.set(0, String.format("剩余照明时间 大概%s分钟", torchDurability));
+                                    meta.setLore(lore);
+                                }
+                                offHand.setItemMeta(meta);
+                            }
+                        }
+                        if (offHand.getType().equals(Material.SOUL_TORCH)){
+                            NBT.modify(offHand, nbt -> {
+                                nbt.setInteger("lightLevel", 11);
+                                nbt.setDouble("lightTime", soulTorchDurability);
+                                nbt.setDouble("originLightTime", soulTorchDurability);
+                            });
+                            ItemMeta meta = offHand.getItemMeta();
+                            if (meta != null) {
+                                if (meta.getLore() == null){
+                                    meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", soulTorchDurability)));
+                                }
+                                else {
+                                    List<String> lore = meta.getLore();
+                                    lore.set(0, String.format("剩余照明时间 大概%s分钟", soulTorchDurability));
+                                    meta.setLore(lore);
+                                }
+                                offHand.setItemMeta(meta);
+                            }
+                        }
+                    }
+                }
+
 
 
                 // Check Light Source Validity
 
-                boolean valid = this.valid(player, mainHand, offHand);
+                boolean mainHandValid = this.valid(player, mainHand);
                 int lightLevel = 0;
-                if (valid) {
+                if (mainHandValid) {
                     lightLevel = lightSources.getLightLevel(mainHand, mainHand.getType());
                     if (!this.usedItemStacks.contains(mainHand)){
                         this.usedItemStacks.add(mainHand);
+                    }
+                }
+                boolean offHandValid = this.valid(player, offHand);
+                if (offHandValid) {
+                    lightLevel = lightSources.getLightLevel(offHand, offHand.getType());
+                    if (!this.usedItemStacks.contains(offHand)){
+                        this.usedItemStacks.add(offHand);
                     }
                 }
                 // Deploy Lighting
@@ -130,7 +181,7 @@ public class LightManager extends Stateful implements Shutdown {
                     Location lastLocation = this.getLastLocation(locationId);
 
                     // Test and Remove Old Lights
-                    if (!valid) {
+                    if (!mainHandValid && !offHandValid) {
                         if (lastLocation != null) {
                             this.removeLight(targetPlayer, lastLocation);
                             this.removeLastLocation(locationId);
@@ -260,21 +311,17 @@ public class LightManager extends Stateful implements Shutdown {
         player.sendBlockChange(location, location.getWorld().getBlockAt(location).getBlockData());
     }
 
-    public boolean valid(Player player, ItemStack mainHand, ItemStack offHand) {
-        if (mainHand != null || mainHand.getAmount() != 0)
+    public boolean valid(Player player, ItemStack itemStack) {
+        if (itemStack != null || itemStack.getAmount() != 0)
         {
-            Material main = mainHand.getType();
-            Material off = offHand.getType();
-            boolean hasLightLevel = lightSources.hasLightLevel(mainHand);
+            Material main = itemStack.getType();
+            boolean hasLightLevel = lightSources.hasLightLevel(itemStack);
             if (!hasLightLevel) return false;
 
             Block currentLocation = player.getEyeLocation().getBlock();
             if (currentLocation.getType() == Material.AIR || currentLocation.getType() == Material.CAVE_AIR) return true;
             if (currentLocation instanceof Waterlogged && ((Waterlogged) currentLocation).isWaterlogged()) {
                 return false;
-            }
-            if (currentLocation.getType() == Material.WATER) {
-                return lightSources.isSubmersible(off, main);
             }
         }
         return false;
