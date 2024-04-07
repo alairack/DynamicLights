@@ -12,11 +12,15 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.Waterlogged;
 import org.bukkit.block.data.type.Light;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitTask;
+import org.checkerframework.checker.units.qual.N;
 
 import java.util.*;
+import java.util.logging.Logger;
+import java.util.UUID;
 
 public class LightManager extends Stateful implements Shutdown {
     public final LightSources lightSources;
@@ -31,10 +35,10 @@ public class LightManager extends Stateful implements Shutdown {
 
     // Configuration
     private long refresh = 5L;
-    private final long consumeRefresh = 1200L; //每分钟刷新一次
+    private final long consumeRefresh = 600L; //每分钟刷新一次
     private int distance = 64;
 
-    private double consumption = 1;
+    private double consumption = 0.5;
 
     private double torchDurability = this.pluginCommon.configurationAPI.get("config.yml").getInt("torch_durability");
 
@@ -64,8 +68,8 @@ public class LightManager extends Stateful implements Shutdown {
             if (this.tasks.containsKey(player.getUniqueId())) return;
             this.tasks.put(player.getUniqueId(), this.pluginCommon.getServer().getScheduler().runTaskTimerAsynchronously(this.pluginCommon, () -> {
                 ItemStack mainHand = player.getInventory().getItemInMainHand();
-                ItemStack offHand = player.getInventory().getItemInOffHand();
 
+                ItemStack offHand = player.getInventory().getItemInOffHand();
 
                 if (mainHand.getAmount() != 0){
                     NBTItem nbti = new NBTItem(mainHand);
@@ -75,6 +79,7 @@ public class LightManager extends Stateful implements Shutdown {
                                 nbt.setInteger("lightLevel", 11);
                                 nbt.setDouble("lightTime", torchDurability);
                                 nbt.setDouble("originLightTime", torchDurability);
+                                nbt.setString("UUID", UUID.randomUUID().toString());
                             });
                             ItemMeta meta = mainHand.getItemMeta();
                             if (meta != null) {
@@ -94,6 +99,7 @@ public class LightManager extends Stateful implements Shutdown {
                                 nbt.setInteger("lightLevel", 11);
                                 nbt.setDouble("lightTime", soulTorchDurability);
                                 nbt.setDouble("originLightTime", soulTorchDurability);
+                                nbt.setString("UUID", UUID.randomUUID().toString());
                             });
                             ItemMeta meta = mainHand.getItemMeta();
                             if (meta != null) {
@@ -111,7 +117,7 @@ public class LightManager extends Stateful implements Shutdown {
                     }
                 }
 
-                if (offHand.getAmount() != 0){
+                if (offHand != null && offHand.getAmount() != 0){
                     NBTItem nbti = new NBTItem(offHand);
                     if (!nbti.hasTag("lightTime")){
                         if (offHand.getType().equals(Material.TORCH)) {
@@ -119,6 +125,7 @@ public class LightManager extends Stateful implements Shutdown {
                                 nbt.setInteger("lightLevel", 11);
                                 nbt.setDouble("lightTime", torchDurability);
                                 nbt.setDouble("originLightTime", torchDurability);
+                                nbt.setString("UUID", UUID.randomUUID().toString());
                             });
                             ItemMeta meta = offHand.getItemMeta();
                             if (meta != null) {
@@ -138,6 +145,7 @@ public class LightManager extends Stateful implements Shutdown {
                                 nbt.setInteger("lightLevel", 11);
                                 nbt.setDouble("lightTime", soulTorchDurability);
                                 nbt.setDouble("originLightTime", soulTorchDurability);
+                                nbt.setString("UUID", UUID.randomUUID().toString());
                             });
                             ItemMeta meta = offHand.getItemMeta();
                             if (meta != null) {
@@ -154,24 +162,29 @@ public class LightManager extends Stateful implements Shutdown {
                         }
                     }
                 }
-
-
-
                 // Check Light Source Validity
 
                 boolean mainHandValid = this.valid(player, mainHand);
                 int lightLevel = 0;
                 if (mainHandValid) {
                     lightLevel = lightSources.getLightLevel(mainHand, mainHand.getType());
-                    if (!this.usedItemStacks.contains(mainHand)){
-                        this.usedItemStacks.add(mainHand);
+                    if (player.getGameMode().equals(GameMode.SURVIVAL) && !ListContain(mainHand)){
+                        ItemStack mainHandClone = mainHand.clone();
+                        player.getInventory().remove(mainHand);
+                        player.getInventory().setItemInMainHand(mainHandClone);
+                        this.usedItemStacks.add(mainHandClone);
+
                     }
                 }
                 boolean offHandValid = this.valid(player, offHand);
                 if (offHandValid) {
                     lightLevel = lightSources.getLightLevel(offHand, offHand.getType());
-                    if (!this.usedItemStacks.contains(offHand)){
-                        this.usedItemStacks.add(offHand);
+                    if (player.getGameMode().equals(GameMode.SURVIVAL) && !ListContain(offHand)){
+                        Bukkit.getLogger().info("!11");
+                        ItemStack offHandClone = offHand.clone();
+                        player.getInventory().setItemInOffHand(null);
+                        player.getInventory().setItemInOffHand(offHandClone);
+                        this.usedItemStacks.add(offHandClone);
                     }
                 }
                 // Deploy Lighting
@@ -208,13 +221,15 @@ public class LightManager extends Stateful implements Shutdown {
                     }
                 }
 
-            }, 2L, refresh));
+            }, 0L, refresh));
         }
         synchronized (this.consumeTasks) {
             if (this.consumeTasks.containsKey(player.getUniqueId())) return;
             this.consumeTasks.put(player.getUniqueId(), this.pluginCommon.getServer().getScheduler().runTaskTimerAsynchronously(this.pluginCommon, () -> {
+                Bukkit.getLogger().info(String.format("%s", this.usedItemStacks.size()));
                 for (int i =0; i< this.usedItemStacks.size(); i++){
                     ItemStack usedItem = this.usedItemStacks.get(i);
+                    Bukkit.getLogger().info(String.format("item amount %s", usedItem.getAmount()));
                     try {
                         if (usedItem.getType() != Material.AIR && usedItem.getAmount() != 0){
                             if (!consume(usedItem, player)){
@@ -223,9 +238,15 @@ public class LightManager extends Stateful implements Shutdown {
                                 i--;
                             }
                         }
-                    } catch (NullPointerException ignored){}
+                        else {
+                            usedItemStacks.remove(i);
+                        }
+                    } catch (NullPointerException ignored){
+                        Bukkit.getLogger().info(ignored.toString());
+                    }
                 }
-            }, 2L, consumeRefresh));
+
+            }, 0L, consumeRefresh));
         }
     }
 
@@ -237,12 +258,14 @@ public class LightManager extends Stateful implements Shutdown {
             Double lightTime = nbti.getDouble("lightTime");
             lightTime = lightTime - this.consumption;
             Double originLightTime = nbti.getDouble("originLightTime");
+            Bukkit.getLogger().info(String.format("%s", lightTime));
             if (lightTime <= 0){
 
                 NBT.modify(mainhand, nbt -> {
                     nbt.setDouble("lightTime", originLightTime);
                 });
                 ItemMeta meta = mainhand.getItemMeta();
+                Bukkit.getLogger().info(meta.getAsString());
                 if (meta != null) {
                     if (meta.getLore() == null){
                         meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", originLightTime)));
@@ -264,7 +287,7 @@ public class LightManager extends Stateful implements Shutdown {
                 ItemMeta meta = mainhand.getItemMeta();
                 if (meta != null) {
                     if (meta.getLore() == null){
-                        meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", lightTime)));
+                        meta.setLore(Arrays.asList(String.format("剩余照明时间 大概%s分钟", finalLightTime)));
                     }
                     else {
                         List<String> lore = meta.getLore();
@@ -273,7 +296,7 @@ public class LightManager extends Stateful implements Shutdown {
                     }
                     mainhand.setItemMeta(meta);
                 }
-
+                Bukkit.getLogger().info(meta.getAsString());
             }
         }
         return true;
@@ -353,5 +376,44 @@ public class LightManager extends Stateful implements Shutdown {
 
         return Strings.repeat("" + CompletedColor + symbol, ProgressBars)
             + Strings.repeat("" + notCompletedColor + symbol, totalBars - ProgressBars);
+    }
+
+    public boolean ListContain(ItemStack itemStack){
+        List<ItemStack> tmpList = new ArrayList<>(this.usedItemStacks);
+        for (int i =0; i< tmpList.size(); i++){
+            ItemStack tmpItem = tmpList.get(i);
+
+            Bukkit.getLogger().info(String.format("1stack: %s", itemStack.getAmount()));
+            Bukkit.getLogger().info(String.format("2stack: %s", tmpList.get(i).getAmount()));
+            Bukkit.getLogger().info(String.format("2stack info: %s", tmpList.get(i).getItemMeta().getAsString()));
+            Bukkit.getLogger().info(String.format("2stack info: %s", tmpList.get(i).getType()));
+
+   //         if (!tmpItem.getType().equals(Material.AIR) && getUUID(itemStack).equals(getUUID(tmpItem))){
+            if (getUUID(itemStack).equals(getUUID(tmpItem))){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public String getUUID(ItemStack itemStack){
+        NBTItem nbti = new NBTItem(itemStack);
+        return nbti.getString("UUID");
+    }
+
+    public void setDurability(ItemStack itemStack){
+        if (itemStack.hasItemMeta()){
+            ItemMeta itemMeta = itemStack.getItemMeta();
+            if(itemMeta instanceof org.bukkit.inventory.meta.Damageable) {
+
+                org.bukkit.inventory.meta.Damageable dMeta = (org.bukkit.inventory.meta.Damageable) itemMeta; // Creates the Damageable meta that you can use .setDamage() on
+                int damage = dMeta.getDamage(); // Gets current damage of the item
+                int maxdamage = itemStack.getType().getMaxDurability(); // Gets the maximum durability of the specific tool
+                if (damage + 5 <= maxdamage) {
+                    dMeta.setDamage(damage + 5); // Will make the durability of the item go down by 5 if it has enough durability to do so
+                    itemStack.setItemMeta(dMeta); // NECESSARY: Updates the item with the new durability
+                }
+            }
+        }
     }
 }

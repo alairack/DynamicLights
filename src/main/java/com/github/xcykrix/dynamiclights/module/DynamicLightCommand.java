@@ -18,6 +18,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 @CommandAlias("dynamiclights|dynamiclight|dl")
 public class DynamicLightCommand extends BaseCommand implements Initialize {
@@ -67,6 +68,7 @@ public class DynamicLightCommand extends BaseCommand implements Initialize {
                 nbt.setInteger("lightLevel", lightLevel);
                 nbt.setDouble("lightTime", lightTime);
                 nbt.setDouble("originLightTime", lightTime);
+                nbt.setString("UUID", UUID.randomUUID().toString());
             });
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
